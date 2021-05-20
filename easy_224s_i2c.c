@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- *  easy_mxt224s.c - Atmel AT42easy_mxt224s Touch Sense Controller
+ *  easy_mxt224s.c - easy I2C mXT224S Driver (from DATA MODUL)
  *
- *  Copyright (C) 2009 Raphael Derosso Pereira <raphaelpereira@gmail.com>
  */
 
 #define DEBUG
