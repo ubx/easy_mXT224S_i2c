@@ -18,27 +18,28 @@
 #include <linux/delay.h>
 
 #define EASY_MXT224S_NAME      "easy_mXT224S"
-#define MODE_COORDINATES        0x00
-#define MODE_REGISTER_RW        0x01
-#define MODE_CONFIGURATION      0x02
+#define MODE_COORDINATES        0x0000
+#define MODE_REGISTER_RW        0x0001
+#define MODE_CONFIGURATION      0x0002
 
-#define MEM_MODE                0x00
-#define MEM_ATMEL_FW_VERSION    0x01 // 4 bytes
-#define MEM_EASYI2C_FW_VERSION  0x05 // 2 bytes
-#define MEM_SENSOR_ART_NUM      0x07 // 10 bytes
-#define MEM_SENSITIVITY         0x80
-#define MEM_ORIENTATION         0x81
-#define MEM_INIT_MOVE_HISTER    0x82
-#define MEM_NEXT_MOVE_HISTER    0x83
-#define MEM_TOUCH_DEDECT_INTEGR 0x84
-#define MEM_NUM_REPORT_TOUCH    0x85
-#define MEM_TOUCH_AUTOM_CALIB   0x86
-#define MEM_X_RESOL_LOW         0x87
-#define MEM_X_RESOL_HIGH        0x88
-#define MEM_Y_RESOL_LOW         0x89
-#define MEM_Y_RESOL_HIGH        0x8A
+#define MEM_RESET               0x0000
+#define MEM_MODE                0x0000
+#define MEM_ATMEL_FW_VERSION    0x0001 // 4 bytes
+#define MEM_EASYI2C_FW_VERSION  0x0005 // 2 bytes
+#define MEM_SENSOR_ART_NUM      0x0007 // 10 bytes
+#define MEM_SENSITIVITY         0x0080
+#define MEM_ORIENTATION         0x0081
+#define MEM_INIT_MOVE_HISTER    0x0082
+#define MEM_NEXT_MOVE_HISTER    0x0083
+#define MEM_TOUCH_DEDECT_INTEGR 0x0084
+#define MEM_NUM_REPORT_TOUCH    0x0085
+#define MEM_TOUCH_AUTOM_CALIB   0x0086
+#define MEM_X_RESOL_LOW         0x0087
+#define MEM_X_RESOL_HIGH        0x0088
+#define MEM_Y_RESOL_LOW         0x0089
+#define MEM_Y_RESOL_HIGH        0x008A
 
-#define RESET                   0x80 // in MEM_MODE
+#define RESET                   0x0080 // in MEM_MODE
 
 /* Polling Rate */
 static int scan_rate = 50;
@@ -66,7 +67,7 @@ static int easy_mxt224s_read_touch_coordinates(struct easy_mxt224s_data *easy_mx
             y = ((buf[2] << 2) + ((buf[3] >> 2) & 3));
             f = ((0xf0 & buf[0]) >> 4);
             p = (0x01 & buf[0]);
-            //pr_debug("read easy_mxt224s touch_coordinates x:%u y:%u f:%u p:%u\n", x, y, f, p);
+            pr_debug("read easy_mxt224s touch_coordinates x:%u y:%u f:%u p:%u\n", x, y, f, p);
             input_report_abs(easy_mxt224s->input, ABS_X, x);
             input_report_abs(easy_mxt224s->input, ABS_Y, y);
             input_report_key(easy_mxt224s->input, BTN_TOUCH, p);
@@ -135,7 +136,7 @@ static int easy_mxt224s_read_information(struct easy_mxt224s_data *easy_mxt224s)
     u8 reg = MEM_ATMEL_FW_VERSION;
     u8 buf[16];
     int ret;
-    struct i2c_msg msg[2] = {
+    struct i2c_msg msg[] = {
             {
                     .addr = easy_mxt224s->client->addr,
                     .flags = 0,
@@ -167,11 +168,11 @@ static int easy_mxt224s_read_information(struct easy_mxt224s_data *easy_mxt224s)
 static int easy_mxt224s_set_mode(struct easy_mxt224s_data *easy_mxt224s, u8 mode) {
     u8 reg = MEM_MODE;
     int ret;
-    struct i2c_msg msg[2] = {
+    struct i2c_msg msg[] = {
             {
                     .addr = easy_mxt224s->client->addr,
                     .flags = 0,
-                    .len = sizeof(reg),
+                    .len = 1,
                     .buf = &reg,
             },
             {
@@ -191,14 +192,14 @@ static int easy_mxt224s_set_mode(struct easy_mxt224s_data *easy_mxt224s, u8 mode
 }
 
 static int easy_mxt224s_reset(struct easy_mxt224s_data *easy_mxt224s) {
-    u8 reg = 0x00; // mem address
-    u8 rst = 0x80; // reset
+    u8 reg = MEM_RESET;
+    u8 rst = RESET;
     int ret;
-    struct i2c_msg msg[2] = {
+    struct i2c_msg msg[] = {
             {
                     .addr = easy_mxt224s->client->addr,
                     .flags = 0,
-                    .len = sizeof(reg),
+                    .len = 1,
                     .buf = &reg,
             },
             {
@@ -239,7 +240,14 @@ static int easy_mxt224s_probe(struct i2c_client *client,
     }
     easy_mxt224s->input = input;
     easy_mxt224s->client = client;
-    //i2c_set_clientdata(client, easy_mxt224s);
+    i2c_set_clientdata(client, easy_mxt224s);
+
+    /* reset the controller */
+    error = easy_mxt224s_reset(easy_mxt224s);
+    if (error) {
+        dev_err(&client->dev, "failed to reset the controller: %d\n", error);
+        return error;
+    }
 
     error = easy_mxt224s_set_mode(easy_mxt224s, MODE_REGISTER_RW);
     if (error) {
@@ -258,21 +266,13 @@ static int easy_mxt224s_probe(struct i2c_client *client,
         return error;
     }
 
-    i2c_set_clientdata(client, easy_mxt224s);
+    //i2c_set_clientdata(client, easy_mxt224s);
 
     error = easy_mxt224s_create_input_device(easy_mxt224s);
     if (error) {
         dev_err(&client->dev, "failed to crate input device: %d\n", error);
         return error;
     }
-
-    /* reset the controller */
-//    error = easy_mxt224s_reset(easy_mxt224s);
-//    if (error) {
-//        dev_err(&client->dev, "failed to reset the controller: %d\n", error);
-//        return error;
-//    }
-
 
     INIT_DELAYED_WORK(&easy_mxt224s->dwork, easy_mxt224s_worker);
     delay = msecs_to_jiffies(MSEC_PER_SEC / scan_rate);
