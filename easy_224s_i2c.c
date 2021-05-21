@@ -49,6 +49,30 @@ MODULE_PARM_DESC(scan_rate,
 "Polling rate in times/sec. Default = 100");
 static unsigned long delay;
 
+/* Geometry */
+static int width = 480;
+module_param(width,
+int, 0644);
+MODULE_PARM_DESC(width,
+"Window width in pixel. Default = 480");
+static int height = 640;
+module_param(height,
+int, 0644);
+MODULE_PARM_DESC(height,
+"Window height in pixel. Default = 480");
+static int orientation = 0;
+module_param(orientation,
+int, 0644);
+MODULE_PARM_DESC(orientation,
+"Orientation of x/y axis. Default = switch y and y");
+
+/* Sensivity threshold */
+static int sensivity = 30;
+module_param(sensivity,
+int, 0644);
+MODULE_PARM_DESC(sensivity,
+"Touch sensitivity, less is more sensitive. Default = 30");
+
 struct easy_mxt224s_data {
     struct i2c_client *client;
     struct input_dev *input;
@@ -203,6 +227,34 @@ static int easy_mxt224s_read_registers(struct easy_mxt224s_data *easy_mxt224s) {
     return ret;
 }
 
+static int
+easy_mxt224s_set_touch_coordinates(struct easy_mxt224s_data *easy_mxt224s, int width, int height, int orientation) {
+    // assume in mode MODE_REGISTER_RW
+    int x_res_high, x_res_low, y_res_low, y_res_high, ret;
+    x_res_high = (width - 1) / 256;
+    x_res_low = (width - 1) - (x_res_high * 256);
+    y_res_high = (height - 1) / 256;
+    y_res_low = (height - 1) - (y_res_high * 256);
+    char buf[] = {
+            MEM_X_RESOL_LOW, x_res_low, x_res_high, y_res_low, y_res_high
+    };
+    char buf2[] = {
+            MEM_ORIENTATION, orientation
+    };
+    ret = i2c_master_send(easy_mxt224s->client, (char *) buf, ARRAY_SIZE(buf));
+    if (ret == ARRAY_SIZE(buf)) {
+        pr_debug("read easy_mxt224s set touch coordinates: x_res_high=%u x_res_low=%u y_res_high=%u y_res_low=%u\n",
+                 x_res_high, x_res_low, y_res_high, y_res_low);
+    }
+    ret = i2c_master_send(easy_mxt224s->client, (char *) buf2, ARRAY_SIZE(buf2));
+    if (ret == ARRAY_SIZE(buf2)) {
+        pr_debug("read easy_mxt224s set touch orientation: orientation=%u\n",
+                 orientation);
+        ret = 0;
+    }
+    return ret;
+}
+
 static int easy_mxt224s_set_mode(struct easy_mxt224s_data *easy_mxt224s, u8 mode) {
     char buf[] = {
             MEM_MODE, mode
@@ -286,7 +338,19 @@ static int easy_mxt224s_probe(struct i2c_client *client,
     }
     error = easy_mxt224s_read_registers(easy_mxt224s);
     if (error) {
-        dev_err(&client->dev, "failed to read registars: %d\n", error);
+        dev_err(&client->dev, "failed to read registers: %d\n", error);
+        return error;
+    }
+
+    error = easy_mxt224s_set_touch_coordinates(easy_mxt224s, width, height, orientation);
+    if (error) {
+        dev_err(&client->dev, "failed to set touch coordinates: %d\n", error);
+        return error;
+    }
+
+    error = easy_mxt224s_read_registers(easy_mxt224s);
+    if (error) {
+        dev_err(&client->dev, "failed to read registers: %d\n", error);
         return error;
     }
 
