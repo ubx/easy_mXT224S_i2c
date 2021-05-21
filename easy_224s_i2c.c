@@ -67,7 +67,7 @@ static int easy_mxt224s_read_touch_coordinates(struct easy_mxt224s_data *easy_mx
             y = ((buf[2] << 2) + ((buf[3] >> 2) & 3));
             f = ((0xf0 & buf[0]) >> 4);
             p = (0x01 & buf[0]);
-            pr_debug("read easy_mxt224s touch_coordinates x:%u y:%u f:%u p:%u\n", x, y, f, p);
+            //pr_debug("read easy_mxt224s touch_coordinates x:%u y:%u f:%u p:%u\n", x, y, f, p);
             input_report_abs(easy_mxt224s->input, ABS_X, x);
             input_report_abs(easy_mxt224s->input, ABS_Y, y);
             input_report_key(easy_mxt224s->input, BTN_TOUCH, p);
@@ -166,27 +166,14 @@ static int easy_mxt224s_read_information(struct easy_mxt224s_data *easy_mxt224s)
 }
 
 static int easy_mxt224s_set_mode(struct easy_mxt224s_data *easy_mxt224s, u8 mode) {
-    u8 reg = MEM_MODE;
-    int ret;
-    struct i2c_msg msg[] = {
-            {
-                    .addr = easy_mxt224s->client->addr,
-                    .flags = 0,
-                    .len = 1,
-                    .buf = &reg,
-            },
-            {
-                    .addr = easy_mxt224s->client->addr,
-                    .flags = 0,
-                    .len = 1,
-                    .buf = &mode,
-            }
+    char buf[] = {
+            MEM_MODE, mode
     };
-    ret = i2c_transfer(easy_mxt224s->client->adapter, msg, ARRAY_SIZE(msg));
-    if (ret == ARRAY_SIZE(msg)) {
+    int ret;
+    ret = i2c_master_send(easy_mxt224s->client, (char *) buf, 2);
+    if (ret == ARRAY_SIZE(buf)) {
         pr_debug("set easy_mxt224s mode: 0x%02x set \n", mode);
         ret = 0;
-
     }
     return ret;
 }
@@ -265,8 +252,6 @@ static int easy_mxt224s_probe(struct i2c_client *client,
         dev_err(&client->dev, "failed to read information: %d\n", error);
         return error;
     }
-
-    //i2c_set_clientdata(client, easy_mxt224s);
 
     error = easy_mxt224s_create_input_device(easy_mxt224s);
     if (error) {
