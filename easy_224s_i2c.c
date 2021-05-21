@@ -165,6 +165,44 @@ static int easy_mxt224s_read_information(struct easy_mxt224s_data *easy_mxt224s)
     return ret;
 }
 
+static int easy_mxt224s_read_registers(struct easy_mxt224s_data *easy_mxt224s) {
+    // assume in mode MODE_REGISTER_RW
+    u8 reg = MEM_SENSITIVITY;
+    u8 buf[11];
+    int ret;
+    struct i2c_msg msg[] = {
+            {
+                    .addr = easy_mxt224s->client->addr,
+                    .flags = 0,
+                    .len = 1,
+                    .buf = &reg,
+            },
+            {
+                    .addr = easy_mxt224s->client->addr,
+                    .flags = I2C_M_RD,
+                    .len = ARRAY_SIZE(buf),
+                    .buf = buf,
+            }
+    };
+    ret = i2c_transfer(easy_mxt224s->client->adapter, msg, ARRAY_SIZE(msg));
+    if (ret == ARRAY_SIZE(msg)) {
+        pr_debug("read easy_mxt224s reg: Sensitivity threshold: %u\n", buf[0]);
+        pr_debug("read easy_mxt224s reg: Orientation: %u\n", buf[1]);
+        pr_debug("read easy_mxt224s reg: Initial movement hysteresis: %u\n", buf[2]);
+        pr_debug("read easy_mxt224s reg: Next movement hysteresis: %u\n", buf[3]);
+        pr_debug("read easy_mxt224s reg: Touch detection integration: %u\n", buf[4]);
+        pr_debug("read easy_mxt224s reg: Number of reported touches: %u\n", buf[5]);
+        pr_debug("read easy_mxt224s reg: Touch automatic calibration: %u\n", buf[6]);
+        pr_debug("read easy_mxt224s reg: X-resolution LOW: %u\n", buf[7]);
+        pr_debug("read easy_mxt224s reg: X-resolution HIGH: %u\n", buf[8]);
+        pr_debug("read easy_mxt224s reg: Y-resolution LOW: %u\n", buf[9]);
+        pr_debug("read easy_mxt224s reg: Y-resolution HIGH: %u\n", buf[10]);
+        ret = 0;
+        msleep(20);
+    }
+    return ret;
+}
+
 static int easy_mxt224s_set_mode(struct easy_mxt224s_data *easy_mxt224s, u8 mode) {
     char buf[] = {
             MEM_MODE, mode
@@ -244,6 +282,11 @@ static int easy_mxt224s_probe(struct i2c_client *client,
     error = easy_mxt224s_read_information(easy_mxt224s);
     if (error) {
         dev_err(&client->dev, "failed to read information: %d\n", error);
+        return error;
+    }
+    error = easy_mxt224s_read_registers(easy_mxt224s);
+    if (error) {
+        dev_err(&client->dev, "failed to read registars: %d\n", error);
         return error;
     }
 
