@@ -1,2 +1,2 @@
 # easy_mXT224S_i2c
-easy I2C mXT224S Driver (from DATA MODUL)
+Linux Driver for the easy i²c mXT224S PCAP I²C Controller (from DATA MODUL).
