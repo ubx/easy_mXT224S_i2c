@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  *  easy_mxt224s.c - easy I2C mXT224S Driver (from DATA MODUL)
  *
@@ -42,11 +41,11 @@
 #define RESET                   0x0080 // in MEM_MODE
 
 /* Polling Rate */
-static int scan_rate = 50;
+static int scan_rate = 20;
 module_param(scan_rate,
 int, 0644);
 MODULE_PARM_DESC(scan_rate,
-"Polling rate in times/sec. Default = 100");
+"Polling rate in times/sec. Default = 20");
 static unsigned long delay;
 
 /* Geometry */
@@ -60,18 +59,18 @@ module_param(height,
 int, 0644);
 MODULE_PARM_DESC(height,
 "Window height in pixel. Default = 480");
-static int orientation = 0;
+static int orientation = 3;
 module_param(orientation,
 int, 0644);
 MODULE_PARM_DESC(orientation,
-"Orientation of x/y axis. Default = switch y and y");
+"Orientation of x/y axis. Default = 3, invert x, switch x and y");
 
-/* Sensivity threshold */
-static int sensivity = 30;
-module_param(sensivity,
+/* Sensitivity threshold */
+static int sensitivity = 80;
+module_param(sensitivity,
 int, 0644);
-MODULE_PARM_DESC(sensivity,
-"Touch sensitivity, less is more sensitive. Default = 30");
+MODULE_PARM_DESC(sensitivity,
+"Touch sensitivity, less is more sensitive. Default = 80");
 
 struct easy_mxt224s_data {
     struct i2c_client *client;
@@ -92,9 +91,9 @@ static int easy_mxt224s_read_touch_coordinates(struct easy_mxt224s_data *easy_mx
             f = ((0xf0 & buf[0]) >> 4);
             p = (0x01 & buf[0]);
             //pr_debug("read easy_mxt224s touch_coordinates x:%u y:%u f:%u p:%u\n", x, y, f, p);
+            input_report_key(easy_mxt224s->input, BTN_TOUCH, p);
             input_report_abs(easy_mxt224s->input, ABS_X, x);
             input_report_abs(easy_mxt224s->input, ABS_Y, y);
-            input_report_key(easy_mxt224s->input, BTN_TOUCH, p);
             input_sync(easy_mxt224s->input);
         }
         ret = 0;
@@ -129,14 +128,14 @@ static int easy_mxt224s_create_input_device(struct easy_mxt224s_data *easy_mxt22
     input->name = "easy_mXT224S Touchscreen";
     input->id.bustype = BUS_I2C;
     input_set_abs_params(input, ABS_MT_POSITION_X, 0,
-                         4711, 0, 0);
+                         1024, 0, 0);
     input_set_abs_params(input, ABS_MT_POSITION_Y, 0,
-                         4711, 0, 0);
-    input_abs_set_res(input, ABS_MT_POSITION_X, 4711);
-    input_abs_set_res(input, ABS_MT_POSITION_Y, 4711);
+                         1024, 0, 0);
+    input_abs_set_res(input, ABS_MT_POSITION_X, 1024);
+    input_abs_set_res(input, ABS_MT_POSITION_Y, 1024);
 
     input_set_abs_params(input, ABS_MT_TOUCH_MAJOR,
-                         0, 4711, 0, 0);
+                         0, 1024, 0, 0);
     input_set_abs_params(input, ABS_MT_PRESSURE, 0, 0xFF, 0, 0);
     input->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS);
     __set_bit(EV_ABS, input->evbit);
@@ -174,6 +173,7 @@ static int easy_mxt224s_read_information(struct easy_mxt224s_data *easy_mxt224s)
                     .buf = buf,
             }
     };
+
     ret = i2c_transfer(easy_mxt224s->client->adapter, msg, ARRAY_SIZE(msg));
     if (ret == ARRAY_SIZE(msg)) {
         pr_debug("read easy_mxt224s info: Atmel fw version: %u %u %u %u\n", buf[0], buf[1], buf[2], buf[3]);
@@ -184,7 +184,7 @@ static int easy_mxt224s_read_information(struct easy_mxt224s_data *easy_mxt224s)
                  buf[12], buf[13],
                  buf[14], buf[15]);
         ret = 0;
-        msleep(20);
+        msleep(5);
     }
     return ret;
 }
@@ -208,6 +208,7 @@ static int easy_mxt224s_read_registers(struct easy_mxt224s_data *easy_mxt224s) {
                     .buf = buf,
             }
     };
+
     ret = i2c_transfer(easy_mxt224s->client->adapter, msg, ARRAY_SIZE(msg));
     if (ret == ARRAY_SIZE(msg)) {
         pr_debug("read easy_mxt224s reg: Sensitivity threshold: %u\n", buf[0]);
@@ -222,7 +223,7 @@ static int easy_mxt224s_read_registers(struct easy_mxt224s_data *easy_mxt224s) {
         pr_debug("read easy_mxt224s reg: Y-resolution LOW: %u\n", buf[9]);
         pr_debug("read easy_mxt224s reg: Y-resolution HIGH: %u\n", buf[10]);
         ret = 0;
-        msleep(20);
+        msleep(5);
     }
     return ret;
 }
@@ -231,24 +232,43 @@ static int
 easy_mxt224s_set_touch_coordinates(struct easy_mxt224s_data *easy_mxt224s, int width, int height, int orientation) {
     // assume in mode MODE_REGISTER_RW
     int x_res_high, x_res_low, y_res_low, y_res_high, ret;
-    x_res_high = (width - 1) / 256;
-    x_res_low = (width - 1) - (x_res_high * 256);
-    y_res_high = (height - 1) / 256;
-    y_res_low = (height - 1) - (y_res_high * 256);
-    char buf[] = {
+    if (orientation % 2) {
+        x_res_high = (height - 1) / 256;
+        x_res_low = (height - 1) - (x_res_high * 256);
+        y_res_high = (width - 1) / 256;
+        y_res_low = (width - 1) - (y_res_high * 256);
+    } else {
+        x_res_high = (width - 1) / 256;
+        x_res_low = (width - 1) - (x_res_high * 256);
+        y_res_high = (height - 1) / 256;
+        y_res_low = (height - 1) - (y_res_high * 256);
+    }
+    char buf1[] = {
             MEM_X_RESOL_LOW, x_res_low, x_res_high, y_res_low, y_res_high
     };
     char buf2[] = {
             MEM_ORIENTATION, orientation
     };
-    ret = i2c_master_send(easy_mxt224s->client, (char *) buf, ARRAY_SIZE(buf));
-    if (ret == ARRAY_SIZE(buf)) {
+    char buf3[] = {
+            MEM_SENSITIVITY, sensitivity
+    };
+
+    ret = i2c_master_send(easy_mxt224s->client, (char *) buf1, ARRAY_SIZE(buf1));
+    if (ret == ARRAY_SIZE(buf1)) {
         pr_debug("read easy_mxt224s set touch coordinates: x_res_high=%u x_res_low=%u y_res_high=%u y_res_low=%u\n",
                  x_res_high, x_res_low, y_res_high, y_res_low);
     }
+    msleep(5);
     ret = i2c_master_send(easy_mxt224s->client, (char *) buf2, ARRAY_SIZE(buf2));
     if (ret == ARRAY_SIZE(buf2)) {
         pr_debug("read easy_mxt224s set touch orientation: orientation=%u\n",
+                 orientation);
+        ret = 0;
+    }
+    msleep(5);
+    ret = i2c_master_send(easy_mxt224s->client, (char *) buf3, ARRAY_SIZE(buf3));
+    if (ret == ARRAY_SIZE(buf3)) {
+        pr_debug("read easy_mxt224s set sensitivity threshold: sensitivity=%u\n",
                  orientation);
         ret = 0;
     }
@@ -260,6 +280,7 @@ static int easy_mxt224s_set_mode(struct easy_mxt224s_data *easy_mxt224s, u8 mode
             MEM_MODE, mode
     };
     int ret;
+
     ret = i2c_master_send(easy_mxt224s->client, (char *) buf, 2);
     if (ret == ARRAY_SIZE(buf)) {
         pr_debug("set easy_mxt224s mode: 0x%02x set \n", mode);
@@ -286,11 +307,12 @@ static int easy_mxt224s_reset(struct easy_mxt224s_data *easy_mxt224s) {
                     .buf = &rst,
             }
     };
+
     ret = i2c_transfer(easy_mxt224s->client->adapter, msg, ARRAY_SIZE(msg));
     if (ret == 2) {
         pr_debug("reset easy_mxt224s\n");
         ret = 0;
-        msleep(20);
+        msleep(5);
     }
     return ret;
 }
@@ -319,7 +341,6 @@ static int easy_mxt224s_probe(struct i2c_client *client,
     easy_mxt224s->client = client;
     i2c_set_clientdata(client, easy_mxt224s);
 
-    /* reset the controller */
     error = easy_mxt224s_reset(easy_mxt224s);
     if (error) {
         dev_err(&client->dev, "failed to reset the controller: %d\n", error);
@@ -328,7 +349,7 @@ static int easy_mxt224s_probe(struct i2c_client *client,
 
     error = easy_mxt224s_set_mode(easy_mxt224s, MODE_REGISTER_RW);
     if (error) {
-        dev_err(&client->dev, "failed to read information: %d\n", error);
+        dev_err(&client->dev, "failed to set mode: %d\n", error);
         return error;
     }
     error = easy_mxt224s_read_information(easy_mxt224s);
@@ -356,7 +377,7 @@ static int easy_mxt224s_probe(struct i2c_client *client,
 
     error = easy_mxt224s_set_mode(easy_mxt224s, MODE_COORDINATES);
     if (error) {
-        dev_err(&client->dev, "failed to read information: %d\n", error);
+        dev_err(&client->dev, "failed to set mode: %d\n", error);
         return error;
     }
 
