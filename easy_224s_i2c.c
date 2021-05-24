@@ -426,3 +426,4 @@ module_i2c_driver(easy_mxt224s_driver);
 MODULE_AUTHOR("Andreas Lüthi <andreas.luethi@gmx.net>");
 MODULE_DESCRIPTION("easy I2C mXT224S Driver (from DATA MODUL)");
 MODULE_LICENSE("GPL");
+MODULE_ALIAS("easy_mxt224s_i2c-driver");
