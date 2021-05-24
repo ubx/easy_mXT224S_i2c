@@ -118,7 +118,7 @@ static int easy_mxt224s_create_input_device(struct easy_mxt224s_data *easy_mxt22
     struct input_dev *input;
     int error;
 
-    input = devm_input_allocate_device(dev);
+    input = input_allocate_device();
     if (!input) {
         dev_err(dev, "failed to allocate input device\n");
         return -ENOMEM;
@@ -232,6 +232,13 @@ static int
 easy_mxt224s_set_touch_coordinates(struct easy_mxt224s_data *easy_mxt224s, int width, int height, int orientation) {
     // assume in mode MODE_REGISTER_RW
     int x_res_high, x_res_low, y_res_low, y_res_high, ret;
+    char buf1[5];
+    char buf2[] = {
+            MEM_ORIENTATION, orientation
+    };
+    char buf3[] = {
+            MEM_SENSITIVITY, sensitivity
+    };
     if (orientation % 2) {
         x_res_high = (height - 1) / 256;
         x_res_low = (height - 1) - (x_res_high * 256);
@@ -243,15 +250,11 @@ easy_mxt224s_set_touch_coordinates(struct easy_mxt224s_data *easy_mxt224s, int w
         y_res_high = (height - 1) / 256;
         y_res_low = (height - 1) - (y_res_high * 256);
     }
-    char buf1[] = {
-            MEM_X_RESOL_LOW, x_res_low, x_res_high, y_res_low, y_res_high
-    };
-    char buf2[] = {
-            MEM_ORIENTATION, orientation
-    };
-    char buf3[] = {
-            MEM_SENSITIVITY, sensitivity
-    };
+    buf1[0] = MEM_X_RESOL_LOW;
+    buf1[1] = x_res_low;
+    buf1[2] = x_res_high;
+    buf1[3] = y_res_low;
+    buf1[4] = y_res_high;
 
     ret = i2c_master_send(easy_mxt224s->client, (char *) buf1, ARRAY_SIZE(buf1));
     if (ret == ARRAY_SIZE(buf1)) {
