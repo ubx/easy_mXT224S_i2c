@@ -94,7 +94,7 @@ static int easy_mxt224s_read_touch_coordinates(struct easy_mxt224s_data *easy_mx
             input_report_key(easy_mxt224s->input, BTN_TOUCH, p);
             input_report_abs(easy_mxt224s->input, ABS_X, x);
             input_report_abs(easy_mxt224s->input, ABS_Y, y);
-            input_report_abs(easy_mxt224s->input, ABS_PRESSURE, 200);
+            //input_report_abs(easy_mxt224s->input, ABS_PRESSURE, 200);
             input_sync(easy_mxt224s->input);
         }
         ret = 0;
