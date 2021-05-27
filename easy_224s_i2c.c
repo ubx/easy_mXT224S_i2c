@@ -41,7 +41,7 @@
 #define RESET                   0x0080 // in MEM_MODE
 
 /* Polling Rate */
-static int scan_rate = 20;
+static int scan_rate = 30;
 module_param(scan_rate,
 int, 0644);
 MODULE_PARM_DESC(scan_rate,
@@ -92,8 +92,9 @@ static int easy_mxt224s_read_touch_coordinates(struct easy_mxt224s_data *easy_mx
             p = (0x01 & buf[0]);
             //pr_debug("read easy_mxt224s touch_coordinates x:%u y:%u f:%u p:%u\n", x, y, f, p);
             input_report_key(easy_mxt224s->input, BTN_TOUCH, p);
-            input_report_abs(easy_mxt224s->input, ABS_MT_POSITION_X, x);
-            input_report_abs(easy_mxt224s->input, ABS_MT_POSITION_Y, y);
+            input_report_abs(easy_mxt224s->input, ABS_X, x);
+            input_report_abs(easy_mxt224s->input, ABS_Y, y);
+            input_report_abs(easy_mxt224s->input, ABS_PRESSURE, 200);
             input_sync(easy_mxt224s->input);
         }
         ret = 0;
@@ -127,16 +128,8 @@ static int easy_mxt224s_create_input_device(struct easy_mxt224s_data *easy_mxt22
 
     input->name = "easy_mXT224S Touchscreen";
     input->id.bustype = BUS_I2C;
-    input_set_abs_params(input, ABS_MT_POSITION_X, 0,
-                         1024, 0, 0);
-    input_set_abs_params(input, ABS_MT_POSITION_Y, 0,
-                         1024, 0, 0);
-    input_abs_set_res(input, ABS_MT_POSITION_X, 1024);
-    input_abs_set_res(input, ABS_MT_POSITION_Y, 1024);
-
-    input_set_abs_params(input, ABS_MT_TOUCH_MAJOR,
-                         0, 1024, 0, 0);
-    input_set_abs_params(input, ABS_MT_PRESSURE, 0, 0xFF, 0, 0);
+    input_set_abs_params(input, ABS_X, 0, width, 0, 0);
+    input_set_abs_params(input, ABS_Y, 0, height, 0, 0);
     input->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS);
     __set_bit(EV_ABS, input->evbit);
     __set_bit(ABS_X, input->absbit);
