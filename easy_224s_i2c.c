@@ -285,34 +285,6 @@ static int easy_mxt224s_set_mode(struct easy_mxt224s_data *easy_mxt224s, u8 mode
     return ret;
 }
 
-static int easy_mxt224s_reset(struct easy_mxt224s_data *easy_mxt224s) {
-    u8 reg = MEM_RESET;
-    u8 rst = RESET;
-    int ret;
-    struct i2c_msg msg[] = {
-            {
-                    .addr = easy_mxt224s->client->addr,
-                    .flags = 0,
-                    .len = 1,
-                    .buf = &reg,
-            },
-            {
-                    .addr = easy_mxt224s->client->addr,
-                    .flags = 0,
-                    .len = 1,
-                    .buf = &rst,
-            }
-    };
-
-    ret = i2c_transfer(easy_mxt224s->client->adapter, msg, ARRAY_SIZE(msg));
-    if (ret == 2) {
-        pr_debug("reset easy_mxt224s\n");
-        ret = 0;
-        msleep(5);
-    }
-    return ret;
-}
-
 static int easy_mxt224s_probe(struct i2c_client *client,
                               const struct i2c_device_id *id) {
     struct easy_mxt224s_data *easy_mxt224s;
@@ -337,12 +309,6 @@ static int easy_mxt224s_probe(struct i2c_client *client,
     easy_mxt224s->client = client;
     i2c_set_clientdata(client, easy_mxt224s);
 
-    error = easy_mxt224s_reset(easy_mxt224s);
-    if (error) {
-        dev_err(&client->dev, "failed to reset the controller: %d\n", error);
-        return error;
-    }
-
     error = easy_mxt224s_set_mode(easy_mxt224s, MODE_REGISTER_RW);
     if (error) {
         dev_err(&client->dev, "failed to set mode: %d\n", error);
@@ -351,11 +317,6 @@ static int easy_mxt224s_probe(struct i2c_client *client,
     error = easy_mxt224s_read_information(easy_mxt224s);
     if (error) {
         dev_err(&client->dev, "failed to read information: %d\n", error);
-        return error;
-    }
-    error = easy_mxt224s_read_registers(easy_mxt224s);
-    if (error) {
-        dev_err(&client->dev, "failed to read registers: %d\n", error);
         return error;
     }
 
