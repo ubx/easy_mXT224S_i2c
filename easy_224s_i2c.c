@@ -66,7 +66,7 @@ MODULE_PARM_DESC(orientation,
 "Orientation of x/y axis. Default = 3, invert x, switch x and y");
 
 /* Sensitivity threshold */
-static int sensitivity = 80;
+static int sensitivity = 25;
 module_param(sensitivity,
 int, 0644);
 MODULE_PARM_DESC(sensitivity,
