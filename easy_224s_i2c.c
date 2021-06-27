@@ -247,20 +247,20 @@ easy_mxt224s_set_touch_coordinates(struct easy_mxt224s_data *easy_mxt224s, int w
 
     ret = i2c_master_send(easy_mxt224s->client, (char *) buf1, ARRAY_SIZE(buf1));
     if (ret == ARRAY_SIZE(buf1)) {
-        pr_debug("read easy_mxt224s set touch coordinates: x_res_high=%u x_res_low=%u y_res_high=%u y_res_low=%u\n",
+        pr_debug("easy_mxt224s set touch coordinates: x_res_high=%u x_res_low=%u y_res_high=%u y_res_low=%u\n",
                  x_res_high, x_res_low, y_res_high, y_res_low);
     }
     msleep(5);
     ret = i2c_master_send(easy_mxt224s->client, (char *) buf2, ARRAY_SIZE(buf2));
     if (ret == ARRAY_SIZE(buf2)) {
-        pr_debug("read easy_mxt224s set touch orientation: orientation=%u\n",
+        pr_debug("easy_mxt224s set touch orientation: orientation=%u\n",
                  orientation);
         ret = 0;
     }
     msleep(5);
     ret = i2c_master_send(easy_mxt224s->client, (char *) buf3, ARRAY_SIZE(buf3));
     if (ret == ARRAY_SIZE(buf3)) {
-        pr_debug("read easy_mxt224s set sensitivity threshold: sensitivity=%u\n",
+        pr_debug("easy_mxt224s set sensitivity threshold: sensitivity=%u\n",
                  orientation);
         ret = 0;
     }
