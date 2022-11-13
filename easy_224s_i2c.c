@@ -41,7 +41,7 @@ static int scan_rate = 30;
 module_param(scan_rate,
 int, 0644);
 MODULE_PARM_DESC(scan_rate,
-"Polling rate in times/sec. Default = 20");
+"Polling rate in times/sec. Default = 30");
 static unsigned long delay;
 
 /* Geometry */
@@ -54,7 +54,7 @@ static int height = 640;
 module_param(height,
 int, 0644);
 MODULE_PARM_DESC(height,
-"Window height in pixel. Default = 480");
+"Window height in pixel. Default = 640");
 static int orientation = 3;
 module_param(orientation,
 int, 0644);
@@ -66,7 +66,7 @@ static int sensitivity = 25;
 module_param(sensitivity,
 int, 0644);
 MODULE_PARM_DESC(sensitivity,
-"Touch sensitivity, less is more sensitive. Default = 80");
+"Touch sensitivity, less is more sensitive. Default = 25");
 
 struct easy_mxt224s_data {
     struct i2c_client *client;
